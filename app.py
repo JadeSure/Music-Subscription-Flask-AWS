@@ -10,9 +10,11 @@ from pprint import pprint
 
 import json
 
-from flask import Flask, render_template
+from flask import Flask, render_template, session, url_for, redirect, request
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'ADMAIN'
+
 dynamoDB = DynamoDBConnection()
 bucket = BucketConnection()
 
@@ -32,7 +34,34 @@ def root():
 
 @app.route('/login', methods = ['POST'])
 def login():
-    pass
+    if 'username' in session:
+        return render_template('main.html', name = session['username'])
+
+    curr_id = request.form['ID']
+    curr_pd = request.form['password']
+
+    error = None
+
+    if __judge_status(curr_id, curr_pd):
+
+        return render_template('main.html', name = session['username'])
+    else:
+        error = 'email or password is invalid'
+        return render_template('index.html', error = error)
+
+def __judge_status(id, pd):
+    response = dynamoDB.query_user(USER_TABLE, id)
+
+    if len(response) == 0:
+        return False
+
+    if pd != response[0]['password']:
+        return False
+
+    session['ID'] = response[0]['email']
+    session['username'] = response[0]['user_name']
+
+    return True
 
 
 def __generate_users():

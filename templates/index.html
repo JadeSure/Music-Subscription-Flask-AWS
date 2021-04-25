@@ -2,9 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>login page</title>
+    <title>CCAssign1</title>
 </head>
 <body>
-Index
+    <h1>Welcome Music Subscription Application!</h1>
+    <form action="/login" method="post">
+        <table>
+            <tr>
+                <td>Email: </td>
+                <td><input type = "text" name = "ID"></td>
+            </tr>
+
+            <tr>
+                <td>Password: </td>
+                <td><input type="password" name = "password"></td>
+            </tr>
+            <tr>
+                <td><input type="Submit" value = "Login"></td>
+                <td><a href="/register">Register</a></td>
+            </tr>
+        </table>
+    </form>
+
+    {% if error %}
+        <p><strong>Error</strong>: {{ error }}</p>
+    {% endif %}
 </body>
 </html>
