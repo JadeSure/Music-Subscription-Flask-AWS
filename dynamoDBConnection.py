@@ -1,6 +1,7 @@
 from decimal import Decimal
 from pprint import pprint
 
+
 import boto3
 from boto3.dynamodb.conditions import Key
 import json

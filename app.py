@@ -1,4 +1,6 @@
 import random
+import requests
+import os
 
 from dynamoDBConnection import DynamoDBConnection
 from bucketConnection import BucketConnection
@@ -18,12 +20,14 @@ bucket = BucketConnection()
 user_dict = {}
 MUSIC_TABLE = 'Music'
 USER_TABLE = 'Users'
+BUCKET_NAME = 'musicimage25042021'
 
 
 @app.route('/')
 def root():
     load_music_info()
     load_users_info()
+    image_handler(BUCKET_NAME)
     return render_template('index.html')
 
 @app.route('/login', methods = ['POST'])
@@ -74,6 +78,30 @@ def load_music_info():
 
         pprint(temp_response, sort_dicts = False)
         print(temp_response['Item'])
+
+def image_handler(bucket_name):
+    if bucket.check_bucket(bucket_name):
+        print('images have been uploaded to S3 already')
+        return
+    if bucket.create_bucket(bucket_name):
+
+        base_path = './image'
+        with open('./file/a2.json') as json_file:
+            music_list = json.load(json_file, parse_float=Decimal)
+
+        for i in music_list['songs']:
+            temp_list1 = i['img_url'].split('/')
+            img_name = temp_list1[-1]
+
+            r = requests.get(i['img_url'])
+            with open(base_path+'/'+img_name, 'wb') as f:
+                f.write(r.content)
+
+            bucket.upload_file(base_path+'/'+img_name, bucket_name, img_name)
+
+            os.remove(base_path+'/'+img_name)
+
+        print('images uploaded success')
 
 if __name__ == '__main__':
     app.run(host = '172.0.0.1', port=8080, debug= True)

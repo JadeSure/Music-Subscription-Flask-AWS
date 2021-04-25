@@ -33,12 +33,19 @@ class BucketConnection():
             return  False
         return True
 
-    def list_bucket(self):
-        response = self.s3_client.list_buckets()
+    # def list_bucket(self):
+    #     response = self.s3_client.list_buckets()
+    #
+    #     print('Existing buckets:')
+    #     for bucket in response['Buckets']:
+    #         print(bucket['Name'])
 
-        print('Existing buckets:')
+    def check_bucket(self, need_bucket_name):
+        response = self.s3_client.list_buckets()
         for bucket in response['Buckets']:
-            print(bucket['Name'])
+            if bucket['Name'] == need_bucket_name:
+                return True
+        return False
 
 
     def upload_file(self, filename, bucket, object_name = None):
