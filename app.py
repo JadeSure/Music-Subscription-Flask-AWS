@@ -4,6 +4,7 @@ import os
 
 from dynamoDBConnection import DynamoDBConnection
 from bucketConnection import BucketConnection
+from registerForm import  RegisterForm
 
 from decimal import Decimal
 from pprint import pprint
@@ -48,6 +49,33 @@ def login():
     else:
         error = 'email or password is invalid'
         return render_template('index.html', error = error)
+
+@app.route('/register', methods=['POST', 'GET'])
+def register():
+    error = None
+    register_form = RegisterForm()
+
+    if request.method == 'POST':
+        if register_form.validate_on_submit():
+            email = request.form.get('email')
+            username = request.form.get('username')
+            password = request.form.get('password1')
+
+            response = dynamoDB.query_user(USER_TABLE, email)
+            if len(response) == 0:
+                dynamoDB.put_user_data(USER_TABLE, email, username, password)
+
+                return render_template('index.html', error = error)
+            else:
+                error = 'This email has been registered'
+
+    return render_template('register.html', form = register_form, error = error)
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    session.pop('ID', None)
+    return render_template('index.html')
 
 def __judge_status(id, pd):
     response = dynamoDB.query_user(USER_TABLE, id)

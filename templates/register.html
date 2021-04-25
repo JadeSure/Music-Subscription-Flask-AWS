@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register Page</title>
+</head>
+<body>
+    <h1>Register Your Account</h1>
+{#    <form action="/register" method="post", enctype = "multipart/form-data">#}
+{#        <table>#}
+{#            <tr>#}
+{#                <td>ID</td>#}
+{#                <td><input type = "text" name = "ID"></td>#}
+{#            </tr>#}
+{##}
+{#            <tr>#}
+{#                <td>Username</td>#}
+{#                <td><input type = "text" name = "username"></td>#}
+{#            </tr>#}
+{##}
+{#            <tr>#}
+{#                <td>Password</td>#}
+{#                <td><input type="password" name = "password"></td>#}
+{#            </tr>#}
+{##}
+{#            <tr>#}
+{#                <td>#}
+{#                    <input type = "file" name = "file" />#}
+{#                </td>#}
+{#            </tr>#}
+{##}
+{#            <tr>#}
+{#                <td><input type="Submit" value = "Register"></td>#}
+{##}
+{#            </tr>#}
+{#        </table>#}
+{#    </form>#}
+
+        <form action="/register" method="post" enctype="multipart/form-data">
+            <table>
+                {{ form.csrf_token() }}
+                <tr>
+                    <td>
+                        {{ form.email.label }}
+                    </td>
+                    <td>
+                        {{ form.email }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>
+                        {{form.username.label}}
+                    </td>
+                    <td>
+                        {{form.username  }}
+                    </td>
+                </tr>
+            <tr>
+                <td>
+                    {{ form.password1.label }}
+                </td>
+
+                <td>
+                     {{ form.password1 }}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    {{ form.password2.label }}
+                </td>
+                <td>
+                    {{ form.password2 }}
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    {{ form.submit }}
+                </td>
+            </tr>
+            </table>
+        </form>
+
+
+    {% if error %}
+        <p><strong>Error</strong>: {{ error }}</p>
+    {% endif %}
+    {% for message in form.email.errors %}
+        <p>{{ message }}</p>
+    {% endfor %}
+
+    {% for message in form.password1.errors %}
+        <p>{{ message }}</p>
+    {% endfor %}
+
+    {% for message in form.password2.errors %}
+        <p>{{ message }}</p>
+    {% endfor %}
+
+</body>
+</html>
