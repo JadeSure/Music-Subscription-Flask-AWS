@@ -146,6 +146,59 @@ class DynamoDBConnection():
 
         return response['Items']
 
+    def scan_music(self, table_name, input_dict, display_musics):
+        query_table = self.dynamoDB.Table(table_name)
+        a_title = ''
+        b_artist = ''
+        c_year = ''
+        status = 0
+        filter_output = ""
+
+        if len(input_dict['title']) != 0:
+            a_title = Key('title').eq(input_dict['title'])
+            status = status + 1
+
+        elif len(input_dict['artist']) != 0:
+            b_artist = Key('artist').eq(input_dict['artist'])
+            status = status + 2
+
+        elif len(input_dict['year']) != 0:
+            c_year = Key('year').eq(input_dict['year'])
+            status = status + 4
+        else:
+            return -1
+
+        if status == 7:
+            filter_output = a_title & b_artist & c_year
+        elif status == 6:
+            filter_output = b_artist & c_year
+        elif status == 5:
+            filter_output = a_title & c_year
+        elif status == 4:
+            filter_output = c_year
+        elif status == 3:
+            filter_output = a_title & b_artist
+        elif status == 2:
+            filter_output = b_artist
+        elif status == 1:
+            filter_output = a_title
+
+        scan_kwargs = {
+            'FilterExpression' : filter_output,
+            'ProjectionExpression': "#yr, title, artist, img_url",
+            'ExpressionAttributeNames': {"#yr": "year"}
+        }
+
+        done = False
+        start_key = None
+        while not done:
+            if start_key:
+                scan_kwargs['ExclusiveStartKey'] = start_key
+            response = query_table.scan(**scan_kwargs)
+            display_musics(response.get('Items', []))
+            start_key = response.get('LastEvaluatedKey', None)
+            done = start_key is None
+
     def query_user(self, table_name, partition_key):
         table = self.dynamoDB.Table(table_name)
         response = table.query(

@@ -16,5 +16,80 @@
 
 
     <h3>Query Area</h3>
+    <form action="/main", method="POST" enctype="multipart/form-data">
+        <table>
+            {{ form.csrf_token() }}
+            <tr>
+                <td>
+                    {{ form.title.label }}
+                </td>
+                <td>
+                    {{ form.title }}
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    {{ form.artist.label }}
+                </td>
+                <td>
+                    {{ form.artist }}
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    {{ form.year.label }}
+                </td>
+                <td>
+                    {{ form.year }}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    {{ form.query }}
+                </td>
+            </tr>
+        </table>
+    </form>
+
+    {% for i in output %}
+    <form action="/subscribe", method="POST" enctype="multipart/form-data">
+        <table>
+            <tr>
+                <td>Music title: {{ i['title'] }}</td>
+                <td rowspan=3><img src={{ i['bucket_img_url'] }} alt="Wrong!" width="100", height="100"></td>
+            </tr>
+            <tr>
+                <td>Music artist: {{ i['artist'] }}</td>
+            </tr>
+            <tr>
+                <td>Music year: {{ i['year'] }}</td>
+            </tr>
+
+            <tr>
+                <td>
+                    <input type="musicID" name="musicID" value={{ i['title'] }}>
+                    <input type="Submit" value = "Subscribe">
+                </td>
+            </tr>
+            <HR SIZE=1>
+        </table>
+
+
+
+    </form>
+
+    {% endfor %}
+
+
+
+
+
+
+    {% if error %}
+        <p><strong>Error</strong>: {{ error }}</p>
+    {% endif %}
+
 </body>
 </html>

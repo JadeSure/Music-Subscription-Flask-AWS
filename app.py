@@ -5,6 +5,7 @@ import os
 from dynamoDBConnection import DynamoDBConnection
 from bucketConnection import BucketConnection
 from registerForm import  RegisterForm
+from queryForm import QueryForm
 
 from decimal import Decimal
 from pprint import pprint
@@ -24,6 +25,7 @@ user_dict = {}
 MUSIC_TABLE = 'Music'
 USER_TABLE = 'Users'
 BUCKET_NAME = 'musicimage25042021'
+BUCKET_IMAGE_BASE ="https://" + BUCKET_NAME + ".s3.amazonaws.com/"
 
 
 @app.route('/')
@@ -35,8 +37,9 @@ def root():
 
 @app.route('/login', methods = ['POST'])
 def login():
+    query_form = QueryForm()
     if 'username' in session:
-        return render_template('main.html', name = session['username'])
+        return render_template('main.html', name = session['username'], form = query_form)
 
     curr_id = request.form['ID']
     curr_pd = request.form['password']
@@ -45,7 +48,7 @@ def login():
 
     if __judge_status(curr_id, curr_pd):
 
-        return render_template('main.html', name = session['username'])
+        return render_template('main.html', name = session['username'], form = query_form)
     else:
         error = 'email or password is invalid'
         return render_template('index.html', error = error)
@@ -76,6 +79,43 @@ def logout():
     session.pop('username', None)
     session.pop('ID', None)
     return render_template('index.html')
+
+
+
+@app.route('/main', methods=['POST', 'GET'])
+def main_page():
+    form_dict = {}
+    output = []
+    # [{'year': '1989', 'artist': 'Tom Petty', 'title': "Free Fallin'"}, {'year': '1989', 'artist': "Guns N' Roses", 'title': 'Patience'}]
+    def display_musics(music_list):
+        output.extend(music_list)
+
+    query_form = QueryForm()
+
+    if request.method == 'POST':
+        if query_form.validate_on_submit():
+            title = request.form.get('title')
+            year = request.form.get('year')
+            artist = request.form.get('artist')
+
+            form_dict['title'] = title
+            form_dict['year'] = year
+            form_dict['artist'] = artist
+
+            temp_status = dynamoDB.scan_music(MUSIC_TABLE, form_dict, display_musics)
+            if temp_status == -1:
+                error = 'You must input valid information!'
+                return render_template('main.html', form=query_form, name=session['username'], error=error)
+
+            if len(output) == 0:
+                error = 'No result is retrieved. Please query again.'
+                return render_template('main.html', form = query_form, name = session['username'], error = error)
+
+            for j in output:
+                img_name = j['img_url'].split("/")[-1]
+                j['bucket_img_url'] = BUCKET_IMAGE_BASE + img_name
+
+    return render_template('main.html', form = query_form, name = session['username'],  output = output)
 
 def __judge_status(id, pd):
     response = dynamoDB.query_user(USER_TABLE, id)
