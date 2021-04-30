@@ -23,7 +23,8 @@ bucket = BucketConnection()
 # for login user info
 user_dict = {}
 MUSIC_TABLE = 'Music'
-USER_TABLE = 'Users'
+USER_TABLE = 'Login'
+SUBSCRIPTION = 'Subscribe'
 BUCKET_NAME = 'musicimage25042021'
 BUCKET_IMAGE_BASE ="https://" + BUCKET_NAME + ".s3.amazonaws.com/"
 
@@ -67,6 +68,7 @@ def register():
             response = dynamoDB.query_user(USER_TABLE, email)
             if len(response) == 0:
                 dynamoDB.put_user_data(USER_TABLE, email, username, password)
+                dynamoDB.put_sb_music(SUBSCRIPTION, email)
 
                 return render_template('index.html', error = error)
             else:
@@ -117,6 +119,28 @@ def main_page():
 
     return render_template('main.html', form = query_form, name = session['username'],  output = output)
 
+@app.route("/addSubscribe", methods=['POST'])
+def subscribe():
+
+    # amounts = request.form.getlist('partition_key')
+    item_ids = request.form.getlist('sort_key')
+
+    select_partition_key = request.form['partition_key']
+    select_sort_key = request.form['sort_key']
+
+    response = dynamoDB.query_music_details(MUSIC_TABLE, select_partition_key, select_sort_key)[0]
+    print(response)
+    output = []
+    output.append(response['title'])
+    output.append(response['artist'])
+    output.append(response['year'])
+    img_name = response['img_url'].split("/")[-1]
+    img_url= BUCKET_IMAGE_BASE + img_name
+    output.append(img_url)
+
+
+    dynamoDB.update_subscription_table(SUBSCRIPTION, session['ID'], output)
+
 def __judge_status(id, pd):
     response = dynamoDB.query_user(USER_TABLE, id)
 
@@ -156,16 +180,22 @@ def __generate_users():
 
 def load_users_info():
     dynamoDB.create_login_table(USER_TABLE)
+    dynamoDB.create_subscription_table(SUBSCRIPTION)
 
     if len(dynamoDB.query_user(USER_TABLE, 's38039900@student.rmit.edu.au')) == 0:
         __generate_users()
         for i in range(10):
             dynamoDB.put_user_data(USER_TABLE, user_dict[i][0], user_dict[i][1], user_dict[i][2])
 
+    if len(dynamoDB.check_sp_table_status(SUBSCRIPTION,'s38039900@student.rmit.edu.au')) == 0:
+        __generate_users()
+        for i in range(10):
+            dynamoDB.put_sb_music(SUBSCRIPTION, user_dict[i][0])
+
 def load_music_info():
     music_table = dynamoDB.create_movie_table(MUSIC_TABLE)
 
-    if len(dynamoDB.query_music(MUSIC_TABLE,'1904')) == 0:
+    if len(dynamoDB.check_music_table_status(MUSIC_TABLE,'1904')) == 0:
         print('load music again')
 
         with open('./file/a2.json') as json_file:

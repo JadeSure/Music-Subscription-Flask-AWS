@@ -89,6 +89,53 @@ class DynamoDBConnection():
 
         return table
 
+    def update_subscription_table(self, table_name, email, sp_music):
+        table = self.dynamoDB.Table(table_name)
+
+        response = table.update_item(
+            Key = {
+                'email': email
+            },
+            UpdateExpression = "set Info.sp_music=:sp",
+            ExpressionAttributeValues={
+                ':sp': sp_music
+            },
+            ReturnValues= "UPDATED_NEW"
+        )
+        return response
+
+    def create_subscription_table(self, table_name):
+        for table in self.dynamoDB.tables.all():
+
+            if table.name == table_name:
+                print('Table', table_name, 'has been here')
+                return self.dynamoDB.Table(table_name)
+
+
+        table = self.dynamoDB.create_table(
+            TableName = table_name,
+            KeySchema=[
+                {
+                    'AttributeName': 'email',
+                    'KeyType': 'HASH'
+                }
+            ],
+            AttributeDefinitions=[
+                {
+                    'AttributeName': 'email',
+                    'AttributeType': 'S'
+                }
+            ],
+            # provide throughput for read capacity
+            ProvisionedThroughput = {
+                'ReadCapacityUnits': 10,
+                "WriteCapacityUnits" : 10
+            }
+        )
+        table.meta.client.get_waiter('table_exists').wait(TableName=table_name)
+        print('Table status:', table.table_status)
+
+
     def load_music_data(self, my_table, json_file_read):
         for music in json_file_read:
 
@@ -113,6 +160,17 @@ class DynamoDBConnection():
         )
         return response
 
+    def put_sb_music(self, table_name, email):
+        table = self.dynamoDB.Table(table_name)
+
+        response = table.put_item(
+            Item={
+                'email': email,
+                'Info' : {}
+            }
+        )
+        return response
+
     def put_music_data(self, table_name, title, artist, year, web_url, img_url):
         table = self.dynamoDB.Table(table_name)
 
@@ -127,21 +185,39 @@ class DynamoDBConnection():
         )
         return response
 
-    def get_music_data(self, table_name, partition_key_name, partition_key_value,  sort_key_name, sort_key_value):
+    def get_music_data(self, table_name, partition_key_value, sort_key_value):
         table = self.dynamoDB.Table(table_name)
 
         try:
-            response = table.get_item(Key = {partition_key_name:partition_key_value, sort_key_name: sort_key_value})
+            response = table.get_item(Key = {'title':partition_key_value, 'artist': sort_key_value})
 
         except ClientError as e:
             print(e.response['Error']['Message'])
         else:
             return response['Item']
 
-    def query_music(self, table_name, partition_key):
+    def check_music_table_status(self, table_name, partition_key):
         table = self.dynamoDB.Table(table_name)
         response = table.query(
             KeyConditionExpression = Key('title').eq(partition_key)
+        )
+
+        return response['Items']
+
+
+    def check_sp_table_status(self, table_name, partition_key):
+        table = self.dynamoDB.Table(table_name)
+        response = table.query(
+            KeyConditionExpression = Key('email').eq(partition_key)
+        )
+
+        return response['Items']
+
+    def query_music_details(self, table_name, partition_key, sort_key):
+        table = self.dynamoDB.Table(table_name)
+        response = table.query(
+            KeyConditionExpression =
+            Key('title').eq(partition_key)&Key('artist').eq(sort_key)
         )
 
         return response['Items']
@@ -239,5 +315,5 @@ if __name__ == '__main__':
     # response = dynamoDB.get_data(table_name, 'title', '#41', 'artist', 'Dave Matthews')
     # print(response)
 
-    music = dynamoDB.query_music(table_name, '000')
+    music = dynamoDB.check_music_table_status(table_name, '000')
     print(music)

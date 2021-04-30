@@ -54,7 +54,8 @@
     </form>
 
     {% for i in output %}
-    <form action="/subscribe", method="POST" enctype="multipart/form-data">
+    <form action="/addSubscribe", method="POST">
+
         <table>
             <tr>
                 <td>Music title: {{ i['title'] }}</td>
@@ -69,16 +70,17 @@
 
             <tr>
                 <td>
-                    <input type="musicID" name="musicID" value={{ i['title'] }}>
+{#                    <input id="musicID" name="musicID" type = 'hidden' value={{ url_for('subscribe', partition_key = i['title'], sort_key = i['artist'])}}>#}
+                    <input type="hidden" id="partition_key" name="partition_key"  value="{{ i['title'] }}">
+                    <input type="hidden" id= "sort_key" name="sort_key" value="{{ i['artist'] }}"/>
+
                     <input type="Submit" value = "Subscribe">
                 </td>
             </tr>
             <HR SIZE=1>
         </table>
-
-
-
     </form>
+
 
     {% endfor %}
 
