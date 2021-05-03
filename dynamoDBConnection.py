@@ -96,7 +96,7 @@ class DynamoDBConnection():
             Key = {
                 'email': email
             },
-            UpdateExpression = "set Info.sp_music=:sp",
+            UpdateExpression = "set sp_music=:sp",
             ExpressionAttributeValues={
                 ':sp': sp_music
             },
@@ -166,7 +166,7 @@ class DynamoDBConnection():
         response = table.put_item(
             Item={
                 'email': email,
-                'Info' : {}
+                'sp_music' : {}
             }
         )
         return response

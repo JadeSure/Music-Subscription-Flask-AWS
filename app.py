@@ -24,7 +24,7 @@ bucket = BucketConnection()
 user_dict = {}
 MUSIC_TABLE = 'Music'
 USER_TABLE = 'Login'
-SUBSCRIPTION = 'Subscribe'
+SUBSCRIPTION_TABLE = 'Subscribe'
 BUCKET_NAME = 'musicimage25042021'
 BUCKET_IMAGE_BASE ="https://" + BUCKET_NAME + ".s3.amazonaws.com/"
 
@@ -36,23 +36,32 @@ def root():
     image_handler(BUCKET_NAME)
     return render_template('index.html')
 
-@app.route('/login', methods = ['POST'])
+@app.route('/login', methods = ['POST', 'GET'])
 def login():
     query_form = QueryForm()
     if 'username' in session:
-        return render_template('main.html', name = session['username'], form = query_form)
 
-    curr_id = request.form['ID']
-    curr_pd = request.form['password']
+        sub_response = dynamoDB.check_sp_table_status(SUBSCRIPTION_TABLE, session['ID'])[0]['sp_music']
+        # print(sub_response)
+        return render_template('main.html', name = session['username'], form = query_form, sub_output = sub_response)
+    if request.method == 'POST':
 
-    error = None
+        curr_id = request.form['ID']
+        curr_pd = request.form['password']
 
-    if __judge_status(curr_id, curr_pd):
+        error = None
 
-        return render_template('main.html', name = session['username'], form = query_form)
-    else:
-        error = 'email or password is invalid'
-        return render_template('index.html', error = error)
+        if __judge_status(curr_id, curr_pd):
+
+
+            sub_response = dynamoDB.check_sp_table_status(SUBSCRIPTION_TABLE, session['ID'])[0]['sp_music']
+
+
+            return render_template('main.html', name = session['username'], form = query_form, sub_output = sub_response)
+        else:
+            error = 'email or password is invalid'
+            return render_template('index.html', error = error)
+    return render_template('index.html')
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
@@ -68,7 +77,7 @@ def register():
             response = dynamoDB.query_user(USER_TABLE, email)
             if len(response) == 0:
                 dynamoDB.put_user_data(USER_TABLE, email, username, password)
-                dynamoDB.put_sb_music(SUBSCRIPTION, email)
+                dynamoDB.put_sb_music(SUBSCRIPTION_TABLE, email)
 
                 return render_template('index.html', error = error)
             else:
@@ -88,6 +97,11 @@ def logout():
 def main_page():
     form_dict = {}
     output = []
+
+
+    sub_response = dynamoDB.check_sp_table_status(SUBSCRIPTION_TABLE, session['ID'])[0]['sp_music']
+
+    # print(sub_response)
     # [{'year': '1989', 'artist': 'Tom Petty', 'title': "Free Fallin'"}, {'year': '1989', 'artist': "Guns N' Roses", 'title': 'Patience'}]
     def display_musics(music_list):
         output.extend(music_list)
@@ -107,29 +121,55 @@ def main_page():
             temp_status = dynamoDB.scan_music(MUSIC_TABLE, form_dict, display_musics)
             if temp_status == -1:
                 error = 'You must input valid information!'
-                return render_template('main.html', form=query_form, name=session['username'], error=error)
+                return render_template('main.html', form=query_form, name=session['username'], error=error, sub_output =sub_response)
 
             if len(output) == 0:
                 error = 'No result is retrieved. Please query again.'
-                return render_template('main.html', form = query_form, name = session['username'], error = error)
+                return render_template('main.html', form = query_form, name = session['username'], error = error, sub_output =sub_response)
 
             for j in output:
                 img_name = j['img_url'].split("/")[-1]
                 j['bucket_img_url'] = BUCKET_IMAGE_BASE + img_name
 
-    return render_template('main.html', form = query_form, name = session['username'],  output = output)
+    return render_template('main.html', form = query_form, name = session['username'],  output = output, sub_output =sub_response)
+
+@app.route("/removeSub", methods=['POST'])
+def removeSub():
+    item_id = request.form['sub_partition_key']
+    item_artist = request.form['sub_sort_key']
+
+    response_list = dynamoDB.check_sp_table_status(SUBSCRIPTION_TABLE, session['ID'])[0]['sp_music']
+    # print('id',item_id)
+    # print('item',item_artist)
+
+    init_index = 0
+    while True:
+
+        id_index = response_list.index(item_id, init_index, len(response_list))
+        # print(response_list)
+        if response_list[id_index+1] == item_artist:
+            del response_list[id_index: id_index+4]
+            break
+        else:
+            init_index = id_index + 1
+            continue
+
+    dynamoDB.update_subscription_table(SUBSCRIPTION_TABLE, session['ID'], response_list)
+
+    return redirect(url_for('main_page'))
+
 
 @app.route("/addSubscribe", methods=['POST'])
 def subscribe():
 
     # amounts = request.form.getlist('partition_key')
-    item_ids = request.form.getlist('sort_key')
+    # item_ids = request.form.getlist('sort_key')
 
     select_partition_key = request.form['partition_key']
     select_sort_key = request.form['sort_key']
 
     response = dynamoDB.query_music_details(MUSIC_TABLE, select_partition_key, select_sort_key)[0]
-    print(response)
+    # print(response)
     output = []
     output.append(response['title'])
     output.append(response['artist'])
@@ -138,8 +178,28 @@ def subscribe():
     img_url= BUCKET_IMAGE_BASE + img_name
     output.append(img_url)
 
+    sub_response = dynamoDB.check_sp_table_status(SUBSCRIPTION_TABLE, session['ID'])[0]['sp_music']
 
-    dynamoDB.update_subscription_table(SUBSCRIPTION, session['ID'], output)
+    init_index = 0
+    while True:
+        id_index = -1
+        if select_partition_key in sub_response:
+            id_index = sub_response.index(select_partition_key, init_index, len(sub_response))
+            artist_index = sub_response[id_index+1]
+
+            if artist_index == select_sort_key:
+                return redirect(url_for('main_page'))
+            else:
+                init_index = id_index +1
+        else:
+            # init_index = id_index+1
+            # continue
+            break
+
+    output.extend(sub_response)
+
+    dynamoDB.update_subscription_table(SUBSCRIPTION_TABLE, session['ID'], output)
+    return redirect(url_for('main_page'))
 
 def __judge_status(id, pd):
     response = dynamoDB.query_user(USER_TABLE, id)
@@ -180,17 +240,17 @@ def __generate_users():
 
 def load_users_info():
     dynamoDB.create_login_table(USER_TABLE)
-    dynamoDB.create_subscription_table(SUBSCRIPTION)
+    dynamoDB.create_subscription_table(SUBSCRIPTION_TABLE)
 
     if len(dynamoDB.query_user(USER_TABLE, 's38039900@student.rmit.edu.au')) == 0:
         __generate_users()
         for i in range(10):
             dynamoDB.put_user_data(USER_TABLE, user_dict[i][0], user_dict[i][1], user_dict[i][2])
 
-    if len(dynamoDB.check_sp_table_status(SUBSCRIPTION,'s38039900@student.rmit.edu.au')) == 0:
+    if len(dynamoDB.check_sp_table_status(SUBSCRIPTION_TABLE, 's38039900@student.rmit.edu.au')) == 0:
         __generate_users()
         for i in range(10):
-            dynamoDB.put_sb_music(SUBSCRIPTION, user_dict[i][0])
+            dynamoDB.put_sb_music(SUBSCRIPTION_TABLE, user_dict[i][0])
 
 def load_music_info():
     music_table = dynamoDB.create_movie_table(MUSIC_TABLE)
