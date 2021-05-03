@@ -17,6 +17,7 @@ from flask import Flask, render_template, session, url_for, redirect, request
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'ADMAIN'
 
+# factory method to connect dynamoDB and bucket
 dynamoDB = DynamoDBConnection()
 bucket = BucketConnection()
 
@@ -29,6 +30,7 @@ BUCKET_NAME = 'musicimage25042021'
 BUCKET_IMAGE_BASE ="https://" + BUCKET_NAME + ".s3.amazonaws.com/"
 
 
+# default root to initialize system, including build music table, load user table
 @app.route('/')
 def root():
     load_music_info()
@@ -36,6 +38,7 @@ def root():
     image_handler(BUCKET_NAME)
     return render_template('index.html')
 
+# user login
 @app.route('/login', methods = ['POST', 'GET'])
 def login():
     query_form = QueryForm()
@@ -63,6 +66,8 @@ def login():
             return render_template('index.html', error = error)
     return render_template('index.html')
 
+
+# register users' info
 @app.route('/register', methods=['POST', 'GET'])
 def register():
     error = None
@@ -74,8 +79,10 @@ def register():
             username = request.form.get('username')
             password = request.form.get('password1')
 
+            # check whether this user has registered already
             response = dynamoDB.query_user(USER_TABLE, email)
             if len(response) == 0:
+                # save users info and create new user for subscription table
                 dynamoDB.put_user_data(USER_TABLE, email, username, password)
                 dynamoDB.put_sb_music(SUBSCRIPTION_TABLE, email)
 
@@ -98,10 +105,11 @@ def main_page():
     form_dict = {}
     output = []
 
-
+    # obtain all the subscription music info in the current user in the subscription table
     sub_response = dynamoDB.check_sp_table_status(SUBSCRIPTION_TABLE, session['ID'])[0]['sp_music']
 
     # print(sub_response)
+    # the shape of response = response['Items']
     # [{'year': '1989', 'artist': 'Tom Petty', 'title': "Free Fallin'"}, {'year': '1989', 'artist': "Guns N' Roses", 'title': 'Patience'}]
     def display_musics(music_list):
         output.extend(music_list)
@@ -110,14 +118,17 @@ def main_page():
 
     if request.method == 'POST':
         if query_form.validate_on_submit():
+            # obtain all the waiting search music info
             title = request.form.get('title')
             year = request.form.get('year')
             artist = request.form.get('artist')
 
+            # save all the info into
             form_dict['title'] = title
             form_dict['year'] = year
             form_dict['artist'] = artist
 
+            # search music in scan ways
             temp_status = dynamoDB.scan_music(MUSIC_TABLE, form_dict, display_musics)
             if temp_status == -1:
                 error = 'You must input valid information!'
@@ -127,22 +138,28 @@ def main_page():
                 error = 'No result is retrieved. Please query again.'
                 return render_template('main.html', form = query_form, name = session['username'], error = error, sub_output =sub_response)
 
+            # attach image info for each music
             for j in output:
                 img_name = j['img_url'].split("/")[-1]
                 j['bucket_img_url'] = BUCKET_IMAGE_BASE + img_name
 
     return render_template('main.html', form = query_form, name = session['username'],  output = output, sub_output =sub_response)
 
+# remove sub info from sub table
 @app.route("/removeSub", methods=['POST'])
 def removeSub():
+    # obtain details from
     item_id = request.form['sub_partition_key']
     item_artist = request.form['sub_sort_key']
 
+    # obtain info from sub table for the current user
     response_list = dynamoDB.check_sp_table_status(SUBSCRIPTION_TABLE, session['ID'])[0]['sp_music']
     # print('id',item_id)
     # print('item',item_artist)
 
     init_index = 0
+
+    # check the location of saved info in the list (consider about the situation of same name of partition key and different name of sort key)
     while True:
 
         id_index = response_list.index(item_id, init_index, len(response_list))
@@ -159,15 +176,18 @@ def removeSub():
     return redirect(url_for('main_page'))
 
 
+# save subscribe info
 @app.route("/addSubscribe", methods=['POST'])
 def subscribe():
 
     # amounts = request.form.getlist('partition_key')
     # item_ids = request.form.getlist('sort_key')
 
+    # obtain user clicked info and submit by hidden ways
     select_partition_key = request.form['partition_key']
     select_sort_key = request.form['sort_key']
 
+    # obtain all the info from music table and put it into subscribe table
     response = dynamoDB.query_music_details(MUSIC_TABLE, select_partition_key, select_sort_key)[0]
     # print(response)
     output = []
@@ -178,8 +198,10 @@ def subscribe():
     img_url= BUCKET_IMAGE_BASE + img_name
     output.append(img_url)
 
+
     sub_response = dynamoDB.check_sp_table_status(SUBSCRIPTION_TABLE, session['ID'])[0]['sp_music']
 
+    # check wether this music info has been saved in the subscribe table
     init_index = 0
     while True:
         id_index = -1
@@ -198,6 +220,7 @@ def subscribe():
 
     output.extend(sub_response)
 
+    # update info into subscription table
     dynamoDB.update_subscription_table(SUBSCRIPTION_TABLE, session['ID'], output)
     return redirect(url_for('main_page'))
 
@@ -237,7 +260,7 @@ def __generate_users():
         user_dict[i] = temp_list
 
 
-
+# init users
 def load_users_info():
     dynamoDB.create_login_table(USER_TABLE)
     dynamoDB.create_subscription_table(SUBSCRIPTION_TABLE)
@@ -252,6 +275,7 @@ def load_users_info():
         for i in range(10):
             dynamoDB.put_sb_music(SUBSCRIPTION_TABLE, user_dict[i][0])
 
+# init music and upload to the table
 def load_music_info():
     music_table = dynamoDB.create_movie_table(MUSIC_TABLE)
 
@@ -266,6 +290,7 @@ def load_music_info():
         pprint(temp_response, sort_dicts = False)
         print(temp_response['Item'])
 
+# upload image info into S3 bucket
 def image_handler(bucket_name):
     if bucket.check_bucket(bucket_name):
         print('images have been uploaded to S3 already')

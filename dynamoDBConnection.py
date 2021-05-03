@@ -89,21 +89,6 @@ class DynamoDBConnection():
 
         return table
 
-    def update_subscription_table(self, table_name, email, sp_music):
-        table = self.dynamoDB.Table(table_name)
-
-        response = table.update_item(
-            Key = {
-                'email': email
-            },
-            UpdateExpression = "set sp_music=:sp",
-            ExpressionAttributeValues={
-                ':sp': sp_music
-            },
-            ReturnValues= "UPDATED_NEW"
-        )
-        return response
-
     def create_subscription_table(self, table_name):
         for table in self.dynamoDB.tables.all():
 
@@ -135,6 +120,21 @@ class DynamoDBConnection():
         table.meta.client.get_waiter('table_exists').wait(TableName=table_name)
         print('Table status:', table.table_status)
 
+    def update_subscription_table(self, table_name, email, sp_music):
+        table = self.dynamoDB.Table(table_name)
+
+        response = table.update_item(
+            Key = {
+                'email': email
+            },
+            UpdateExpression = "set sp_music=:sp",
+            ExpressionAttributeValues={
+                ':sp': sp_music
+            },
+            ReturnValues= "UPDATED_NEW"
+        )
+        return response
+
 
     def load_music_data(self, my_table, json_file_read):
         for music in json_file_read:
@@ -148,6 +148,7 @@ class DynamoDBConnection():
             print(title, artist, year, web_url, img_url)
             my_table.put_item(Item=music)
 
+    # save one user's data
     def put_user_data(self, table_name, email, user_name, password):
         table = self.dynamoDB.Table(table_name)
 
@@ -159,6 +160,7 @@ class DynamoDBConnection():
             }
         )
         return response
+
 
     def put_sb_music(self, table_name, email):
         table = self.dynamoDB.Table(table_name)
@@ -222,6 +224,7 @@ class DynamoDBConnection():
 
         return response['Items']
 
+    # scan music info by & ways to check all the situation
     def scan_music(self, table_name, input_dict, display_musics):
         query_table = self.dynamoDB.Table(table_name)
         a_title = ''
