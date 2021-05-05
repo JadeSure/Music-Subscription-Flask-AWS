@@ -7,12 +7,17 @@ from boto3.dynamodb.conditions import Key
 import json
 
 from botocore.exceptions import ClientError
-
+ACCESS_KEY = 'AKIATOTIIBQUUE6G5PNX'
+SECRET_KEY = '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'
 
 class DynamoDBConnection():
     def __init__(self, dynamoDB = None):
+        session = boto3.Session(
+            aws_access_key_id=ACCESS_KEY,
+            aws_secret_access_key=SECRET_KEY
+        )
         if not dynamoDB:
-            self.dynamoDB = boto3.resource('dynamodb')
+            self.dynamoDB = session.resource('dynamodb')
 
 
 
