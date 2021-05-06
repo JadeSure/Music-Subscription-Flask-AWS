@@ -316,4 +316,5 @@ def image_handler(bucket_name):
         print('images uploaded success')
 
 if __name__ == '__main__':
-    app.run(host = '172.0.0.1', port=8080, debug= True)
+    # app.run(host = '172.0.0.1', port=8080, debug= True)
+    app.run(debug=True)
