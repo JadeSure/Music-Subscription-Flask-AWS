@@ -1,5 +1,5 @@
 # AWS Service Based Project - Music Subscription Application
-   
+# Introduction: In an individual project, I accomplish functions including user login, searching kinds of music based on title, artists or musical albums, which is implemented in DynamoDB, and a few two-way interactions for both S3 and DynamoDB with creating, retrieving, updating, deleting
 ## This project utilizes EC2, DynamoDB, S3 Bucket, Flask. If you try to deploy services into your personal computer, you need to modify Access_key and Secret_key based on your AWS account(both of S3 and DynamoDB)
 
 ## AWS DynamoDB Web Service Connection
